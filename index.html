@@ -35,11 +35,11 @@ button:disabled{opacity:.5}
 <h1>My Exam Timetable</h1>
 <section id="in">
 <div class="row">
-<label class="file" for="pdf" id="l1">Timetable PDF</label>
+<label class="file" for="pdf" id="l1">General timetable PDF</label>
 <label class="file" for="slp" id="l2">Exam slip image</label>
 </div>
 <input id="pdf" type="file" accept="application/pdf,.pdf">
-<input id="slp" type="file" accept="image/*">
+<input id="slp" type="file" accept="image/*,application/pdf,.pdf">
 <textarea id="codes" placeholder="Course codes: read from your slip, or type them" spellcheck="false" autocapitalize="characters"></textarea>
 <div class="st" id="st"></div>
 <button id="go" disabled>Generate</button>
@@ -51,17 +51,29 @@ button:disabled{opacity:.5}
 </section>
 </main>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 const $=id=>document.getElementById(id);
 const MON={january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,september:8,october:9,november:10,december:11};
-const MS=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 const CODE=/^((?:NOUN-)?[A-Z]{3,4}\d{3}[A-Z]?(?:-[AB])?)(?:\s+([\s\S]*))?$/;
 const TIME=/\d{1,2}(?::\d{2})?\s*[ap]m/gi;
 const DATE=/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s*(\d{1,2})\s*(?:st|nd|rd|th)?\s+([A-Za-z]+),?\s*(\d{4})/i;
 let papers=null,blob=null,imgUrl=null;
 
-function setSt(el,t,err){el.textContent=t;el.className='st'+(err?' err':'')}
+// ---------- library loading: local ./vendor first, CDN as fallback ----------
+const LIB={
+  pdf:{srcs:['vendor/pdf.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js'],
+       workers:['vendor/pdf.worker.min.js','https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js']},
+  ocr:{srcs:['vendor/tesseract/tesseract.min.js','https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js']}
+};
+function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=()=>ok(src);s.onerror=()=>{s.remove();no(new Error('load '+src))};document.head.appendChild(s)})}
+function loadAny(srcs){return srcs.reduce((p,s)=>p.catch(()=>loadScript(s)),Promise.reject())}
+let pdfReady=null;
+function ensurePdf(){
+  return pdfReady||(pdfReady=loadAny(LIB.pdf.srcs).then(src=>{
+    pdfjsLib.GlobalWorkerOptions.workerSrc=LIB.pdf.workers[LIB.pdf.srcs.indexOf(src)];
+  }).catch(e=>{pdfReady=null;throw e}));
+}
+
 function lineGroup(arr,tol){
   const a=arr.slice().sort((p,q)=>q.y-p.y),L=[];
   for(const it of a){const l=L[L.length-1];if(l&&Math.abs(l.y-it.y)<=tol)l.items.push(it);else L.push({y:it.y,items:[it]})}
@@ -88,7 +100,6 @@ async function parsePdf(buf,onPage){
     const pg=await pdf.getPage(n),tc=await pg.getTextContent();
     const its=tc.items.filter(i=>i.str&&i.str.trim()).map(i=>({s:i.str.trim(),x:i.transform[4],y:i.transform[5],w:i.width||0}));
     const lines=lineGroup(its,3);
-    // day labels
     const labels=[];
     for(const l of lines){
       const segs=[];
@@ -101,7 +112,6 @@ async function parsePdf(buf,onPage){
         if(m&&MON[m[3].toLowerCase()]!==undefined)labels.push({x:g.x,y:g.y,wd:m[1],d:+m[2],mo:MON[m[3].toLowerCase()],yr:+m[4]});
       }
     }
-    // time header triples
     const toks=[];
     for(const it of its){
       if(it.s.replace(TIME,'').replace(/[\s,]/g,'')!=='')continue;
@@ -111,13 +121,11 @@ async function parsePdf(buf,onPage){
     for(const l of lineGroup(toks,3))for(let i=0;i+2<l.items.length;i+=3){
       const g=l.items.slice(i,i+3);triples.push({y:l.y,c:g.map(k=>k.x),t:g.map(k=>normTime(k.t))});
     }
-    // pair labels to triples (one-to-one, nearest first)
     const pairs=[];
     labels.forEach((lb,li)=>triples.forEach((tr,ti)=>pairs.push({li,ti,d:Math.abs(lb.y-tr.y)+0.2*Math.abs(lb.x-tr.c[0])})));
     pairs.sort((a,b)=>a.d-b.d);
     const uL=new Set(),uT=new Set();
     for(const p of pairs){if(uL.has(p.li)||uT.has(p.ti))continue;uL.add(p.li);uT.add(p.ti);triples[p.ti].lb=labels[p.li]}
-    // cells
     const cells=[];
     for(const l of lines){
       let cur=null;
@@ -184,7 +192,7 @@ function build(recs,codes){
 }
 
 // ---------- drawing ----------
-const W=1080,P=48,CH=150,GAP=18;
+const W=1080,P=48;
 function rr(c,x,y,w,h,r){c.beginPath();c.moveTo(x+r,y);c.arcTo(x+w,y,x+w,y+h,r);c.arcTo(x+w,y+h,x,y+h,r);c.arcTo(x,y+h,x,y,r);c.arcTo(x,y,x+w,y,r);c.closePath()}
 function wrap(c,t,maxW,maxL){
   const words=t.split(/\s+/),ls=[];let cur='';
@@ -194,12 +202,17 @@ function wrap(c,t,maxW,maxL){
   return ls;
 }
 const FF='system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 function draw(hit,missing,nClash){
+  const CH=150,GAP=14,HB=60;
+  const groups=[];
+  for(const h of hit){const g=groups[groups.length-1];if(g&&g.iso===h.iso)g.items.push(h);else groups.push({iso:h.iso,dt:h.dt,wd:h.wd,items:[h]})}
   const t=document.createElement('canvas').getContext('2d');
   t.font='24px '+FF;
   const mtxt=missing.length?wrap(t,'Not found in the timetable: '+missing.join(', '),W-2*P-40,6):[];
-  const head=210,foot=130+(mtxt.length?mtxt.length*34+50:0);
-  const H=head+Math.max(hit.length,1)*(CH+GAP)+foot;
+  const head=200,foot=130+(mtxt.length?mtxt.length*34+50:0);
+  const body=groups.reduce((s,g)=>s+HB+12+g.items.length*(CH+GAP)+20,0)||(CH+GAP);
+  const H=head+body+foot;
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const c=cv.getContext('2d');
   c.fillStyle='#f4f6f8';c.fillRect(0,0,W,H);
@@ -208,37 +221,44 @@ function draw(hit,missing,nClash){
   c.font='bold 54px '+FF;c.fillText('My Exam Timetable',P,72);
   c.font='26px '+FF;c.fillText('NOUN · 2026_2 E-Exam',P,118);
   c.fillStyle='#14181f';c.font='24px '+FF;
-  c.fillText(hit.length+' paper'+(hit.length===1?'':'s')+(nClash?' · '+nClash+' clash'+(nClash===1?'':'es'):''),P,190);
+  c.fillText(hit.length+' paper'+(hit.length===1?'':'s')+(nClash?' · '+nClash+' clash'+(nClash===1?'':'es'):''),P,188);
   let y=head;
   if(!hit.length){c.fillStyle='#5b6573';c.fillText('No matching papers found.',P,y+60);y+=CH+GAP}
-  for(const h of hit){
-    c.fillStyle=h.clash?'#fff4f4':'#fff';rr(c,P,y,W-2*P,CH,18);c.fill();
-    c.lineWidth=h.clash?6:2;c.strokeStyle=h.clash?'#d32f2f':'#d5dae1';rr(c,P,y,W-2*P,CH,18);c.stroke();
-    c.fillStyle=h.clash?'#d32f2f':'#0b6b3a';rr(c,P+20,y+20,130,CH-40,14);c.fill();
-    c.fillStyle='#fff';c.textAlign='center';
-    c.font='bold 26px '+FF;c.fillText(MS[h.dt.getUTCMonth()],P+85,y+54);
-    c.font='bold 58px '+FF;c.fillText(String(h.dt.getUTCDate()),P+85,y+107);
+  for(const g of groups){
+    const gc=g.items.some(i=>i.clash);
+    const wd=g.wd.charAt(0).toUpperCase()+g.wd.slice(1).toLowerCase();
+    c.fillStyle=gc?'#fdeaea':'#e1f0e7';rr(c,P,y,W-2*P,HB,14);c.fill();
+    c.fillStyle=gc?'#d32f2f':'#0b6b3a';c.font='bold 34px '+FF;c.textAlign='left';
+    c.fillText(wd+', '+MN[g.dt.getUTCMonth()]+' '+g.dt.getUTCDate(),P+22,y+42);
+    c.font='24px '+FF;c.textAlign='right';
+    c.fillText(g.items.length+(g.items.length===1?' paper':' papers')+(gc?' · CLASH':''),W-P-22,y+40);
     c.textAlign='left';
-    const tx=P+180;
-    c.fillStyle='#14181f';c.font='bold 40px '+FF;c.fillText(h.code,tx,y+56);
-    const cw=c.measureText(h.code).width;
-    if(h.batch){
-      c.font='bold 20px '+FF;const bt='Batch '+h.batch,bw=c.measureText(bt).width+22;
-      c.fillStyle='#e3ebf5';rr(c,tx+cw+14,y+28,bw,32,16);c.fill();
-      c.fillStyle='#2a3b52';c.fillText(bt,tx+cw+25,y+51);
+    y+=HB+12;
+    for(const h of g.items){
+      c.fillStyle=h.clash?'#fff4f4':'#fff';rr(c,P,y,W-2*P,CH,18);c.fill();
+      c.lineWidth=h.clash?6:2;c.strokeStyle=h.clash?'#d32f2f':'#d5dae1';rr(c,P,y,W-2*P,CH,18);c.stroke();
+      c.fillStyle=h.clash?'#d32f2f':'#0b6b3a';rr(c,P+18,y+18,170,CH-36,14);c.fill();
+      c.fillStyle='#fff';c.textAlign='center';c.font='bold 36px '+FF;
+      c.fillText(h.time,P+103,y+CH/2+13);
+      c.textAlign='left';
+      const tx=P+216;
+      c.fillStyle='#14181f';c.font='bold 40px '+FF;c.fillText(h.code,tx,y+56);
+      const cw=c.measureText(h.code).width;
+      if(h.batch){
+        c.font='bold 20px '+FF;const bt='Batch '+h.batch,bw=c.measureText(bt).width+22;
+        c.fillStyle='#e3ebf5';rr(c,tx+cw+14,y+28,bw,32,16);c.fill();
+        c.fillStyle='#2a3b52';c.fillText(bt,tx+cw+25,y+51);
+      }
+      c.fillStyle='#14181f';c.font='28px '+FF;
+      wrap(c,h.title||'(title not read)',W-P-24-tx,2).forEach((l,i)=>c.fillText(l,tx,y+94+i*34));
+      if(h.clash){
+        c.font='bold 20px '+FF;const w2=c.measureText('CLASH').width+26;
+        c.fillStyle='#d32f2f';rr(c,W-P-20-w2,y+22,w2,30,15);c.fill();
+        c.fillStyle='#fff';c.fillText('CLASH',W-P-7-w2,y+44);
+      }
+      y+=CH+GAP;
     }
-    c.fillStyle='#5b6573';c.font='24px '+FF;
-    wrap(c,h.title||'',W-P-24-230-tx,2).forEach((l,i)=>c.fillText(l,tx,y+92+i*30));
-    c.textAlign='right';
-    if(h.clash){
-      c.font='bold 20px '+FF;const w2=c.measureText('CLASH').width+26;
-      c.fillStyle='#d32f2f';rr(c,W-P-24-w2,y+16,w2,30,15);c.fill();
-      c.fillStyle='#fff';c.fillText('CLASH',W-P-37,y+38);
-    }
-    c.fillStyle='#14181f';c.font='bold 38px '+FF;c.fillText(h.time,W-P-24,y+92);
-    c.fillStyle='#5b6573';c.font='26px '+FF;c.fillText(h.wd,W-P-24,y+128);
-    c.textAlign='left';
-    y+=CH+GAP;
+    y+=20;
   }
   if(mtxt.length){
     const bh=mtxt.length*34+30;
@@ -267,16 +287,29 @@ function codesFromText(txt){
   }
   return out;
 }
-function loadScript(src){return new Promise((ok,no)=>{const s=document.createElement('script');s.src=src;s.onload=ok;s.onerror=()=>no(new Error('load'));document.head.appendChild(s)})}
+async function readSlipPdf(file){
+  await ensurePdf();
+  const pdf=await pdfjsLib.getDocument({data:await file.arrayBuffer()}).promise;
+  let txt='';
+  for(let n=1;n<=pdf.numPages;n++){
+    const tc=await (await pdf.getPage(n)).getTextContent();
+    txt+=tc.items.map(i=>i.str).join(' ')+' ';
+  }
+  return codesFromText(txt);
+}
 async function readSlip(file){
+  if(file.type==='application/pdf'||/\.pdf$/i.test(file.name))return readSlipPdf(file);
   const bmp=await createImageBitmap(file),k=Math.max(1,Math.min(3,2000/bmp.width));
   const cv=document.createElement('canvas');cv.width=Math.round(bmp.width*k);cv.height=Math.round(bmp.height*k);
   const g=cv.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,cv.width,cv.height);g.drawImage(bmp,0,0,cv.width,cv.height);
   if('TextDetector' in window){
     try{const r=await new TextDetector().detect(cv),c=codesFromText(r.map(x=>x.rawValue).join(' '));if(c.length)return c}catch(e){}
   }
-  if(!window.Tesseract)await loadScript('https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js');
-  const w=await Tesseract.createWorker('eng');
+  let src=null;
+  if(!window.Tesseract)src=await loadAny(LIB.ocr.srcs);
+  const local=src===LIB.ocr.srcs[0];
+  const opts=local?{workerPath:'vendor/tesseract/worker.min.js',corePath:'vendor/tesseract/',langPath:'vendor/tesseract/'}:{};
+  const w=await Tesseract.createWorker('eng',1,opts);
   try{const {data}=await w.recognize(cv);return codesFromText(data.text)}finally{await w.terminate()}
 }
 $('slp').addEventListener('change',async e=>{
@@ -295,9 +328,9 @@ $('slp').addEventListener('change',async e=>{
 $('pdf').addEventListener('change',async e=>{
   const f=e.target.files[0];if(!f)return;
   papers=null;$('go').disabled=true;$('l1').textContent=f.name;$('l1').classList.remove('ok');
-  if(!window.pdfjsLib){st('PDF reader failed to load. Check your connection and reload.',1);return}
-  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
   try{
+    st('Loading PDF reader…');
+    try{await ensurePdf()}catch(x){st('PDF reader failed to load. Check your connection and reload.',1);return}
     st('Reading PDF…');
     const r=await parsePdf(await f.arrayBuffer(),(n,t)=>st('Reading page '+n+' of '+t+'…'));
     if(!r.recs.length)throw new Error('No exam entries found. Is this the exam timetable PDF?');
