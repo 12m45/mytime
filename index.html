@@ -5,45 +5,56 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>My Exam Timetable</title>
 <style>
-:root{--bg:#f4f6f8;--card:#fff;--tx:#14181f;--mut:#5b6573;--ac:#0b6b3a;--acx:#fff;--bd:#d5dae1;--err:#c62828;
+:root{--bg:#f4f6f8;--card:#fff;--tx:#14181f;--mut:#5b6573;--ac:#0b6b3a;--acx:#fff;--bd:#d5dae1;--err:#c62828;--soft:#e1f0e7;
 box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
-@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1317;--card:#1a2027;--tx:#eef1f4;--mut:#9aa5b1;--ac:#37b878;--acx:#06210f;--bd:#2c3540;--err:#ff6b6b}}
-:root[data-theme="dark"]{--bg:#0f1317;--card:#1a2027;--tx:#eef1f4;--mut:#9aa5b1;--ac:#37b878;--acx:#06210f;--bd:#2c3540;--err:#ff6b6b}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1317;--card:#1a2027;--tx:#eef1f4;--mut:#9aa5b1;--ac:#37b878;--acx:#06210f;--bd:#2c3540;--err:#ff6b6b;--soft:#173326}}
+:root[data-theme="dark"]{--bg:#0f1317;--card:#1a2027;--tx:#eef1f4;--mut:#9aa5b1;--ac:#37b878;--acx:#06210f;--bd:#2c3540;--err:#ff6b6b;--soft:#173326}
 *{box-sizing:border-box}
 html,body{height:100%;margin:0;overflow:hidden}
 body{background:var(--bg);color:var(--tx);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-main{height:100%;max-width:640px;margin:0 auto;padding:12px;display:flex;flex-direction:column;gap:10px}
-h1{font-size:1.25rem;margin:0}
-section{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0}
+main{height:100%;max-width:640px;margin:0 auto;padding:14px;display:flex;flex-direction:column;gap:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:1.3rem;margin:0;letter-spacing:-.01em}
+.chip{font-size:.75rem;font-weight:600;padding:4px 10px;border-radius:99px;background:var(--card);border:1px solid var(--bd);color:var(--mut);white-space:nowrap}
+.chip.ok{background:var(--soft);border-color:transparent;color:var(--ac)}
+.chip.err{color:var(--err)}
+section{display:flex;flex-direction:column;gap:12px;flex:1;min-height:0}
 #out{display:none}
 .row{display:flex;gap:8px}
-label.file{flex:1;border:2px dashed var(--bd);border-radius:12px;padding:16px 8px;text-align:center;color:var(--mut);font-size:.9rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;cursor:pointer;background:var(--card)}
-label.file.ok{border-style:solid;border-color:var(--ac);color:var(--tx)}
+label.file{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:2px dashed var(--bd);border-radius:16px;padding:22px 12px;text-align:center;color:var(--mut);font-size:.9rem;cursor:pointer;background:var(--card);overflow:hidden}
+label.file b{color:var(--tx);font-size:1.05rem}
+label.file svg{width:30px;height:30px;stroke:var(--ac);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+label.file.ok{border-style:solid;border-color:var(--ac)}
+label.file span{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+label.mini{border:0;padding:0;background:none;font-size:.8rem;text-decoration:underline;color:var(--mut);align-self:center;flex-direction:row}
 input[type=file]{display:none}
-textarea{flex:1;min-height:0;width:100%;border:1px solid var(--bd);border-radius:12px;padding:10px;background:var(--card);color:var(--tx);font:inherit;text-transform:uppercase;resize:none}
-button{font:inherit;font-weight:600;border:0;border-radius:10px;padding:12px 16px;background:var(--ac);color:var(--acx);width:100%;cursor:pointer}
+.lbl{font-size:.8rem;font-weight:600;color:var(--mut);margin-bottom:-6px}
+textarea{flex:1;min-height:0;width:100%;border:1px solid var(--bd);border-radius:14px;padding:12px;background:var(--card);color:var(--tx);font:inherit;text-transform:uppercase;resize:none}
+textarea:focus{outline:2px solid var(--ac);border-color:transparent}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:14px 16px;background:var(--ac);color:var(--acx);width:100%;cursor:pointer}
 button.alt{background:var(--card);color:var(--tx);border:1px solid var(--bd)}
 button:disabled{opacity:.5}
 .st{color:var(--mut);font-size:.85rem;min-height:1.2em}
 .st.err{color:var(--err)}
-#wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--bd);border-radius:10px;-webkit-overflow-scrolling:touch}
+#wrap{flex:1;min-height:0;overflow:auto;border:1px solid var(--bd);border-radius:14px;-webkit-overflow-scrolling:touch;background:var(--card)}
 #wrap img{width:100%;height:auto;display:block}
 </style>
 </head>
 <body>
 <main>
-<h1>My Exam Timetable</h1>
+<header><h1>My Exam Timetable</h1><span class="chip" id="chip">Loading timetable…</span></header>
 <section id="in">
-<div class="row">
-<label class="file" for="pdf" id="l1">General timetable PDF</label>
-<label class="file" for="slp" id="l2">Exam slip image</label>
-</div>
+<label class="file" for="slp" id="l2">
+<svg viewBox="0 0 24 24"><path d="M12 16V4M7 9l5-5 5 5M4 20h16"/></svg>
+<b>Upload your exam slip</b><span>Screenshot or PDF</span></label>
+<div class="lbl">Course codes (edit if needed)</div>
+<textarea id="codes" placeholder="Read from your slip, or type them: CIT206, GST201…" spellcheck="false" autocapitalize="characters"></textarea>
+<div class="st" id="st"></div>
+<button id="go" disabled>Generate my timetable</button>
+<label class="file" for="pdf" id="l1" style="display:none"><b>General timetable PDF</b><span>Choose the NOUN exam timetable PDF</span></label>
+</section>
 <input id="pdf" type="file" accept="application/pdf,.pdf">
 <input id="slp" type="file" accept="image/*,application/pdf,.pdf">
-<textarea id="codes" placeholder="Course codes: read from your slip, or type them" spellcheck="false" autocapitalize="characters"></textarea>
-<div class="st" id="st"></div>
-<button id="go" disabled>Generate</button>
-</section>
 <section id="out">
 <div id="wrap"><img id="img" alt="Your personal exam timetable"></div>
 <div class="st" id="note"></div>
@@ -57,7 +68,8 @@ const MON={january:0,february:1,march:2,april:3,may:4,june:5,july:6,august:7,sep
 const CODE=/^((?:NOUN-)?[A-Z]{3,4}\d{3}[A-Z]?(?:-[AB])?)(?:\s+([\s\S]*))?$/;
 const TIME=/\d{1,2}(?::\d{2})?\s*[ap]m/gi;
 const DATE=/(Monday|Tuesday|Wednesday|Thursday|Friday|Saturday|Sunday),?\s*(\d{1,2})\s*(?:st|nd|rd|th)?\s+([A-Za-z]+),?\s*(\d{4})/i;
-let papers=null,blob=null,imgUrl=null;
+const TIMETABLE_URL='timetable.pdf';
+let papers=null,blob=null,imgUrl=null,pending=false;
 
 // ---------- library loading: local ./vendor first, CDN as fallback ----------
 const LIB={
@@ -126,16 +138,32 @@ async function parsePdf(buf,onPage){
     pairs.sort((a,b)=>a.d-b.d);
     const uL=new Set(),uT=new Set();
     for(const p of pairs){if(uL.has(p.li)||uT.has(p.ti))continue;uL.add(p.li);uT.add(p.ti);triples[p.ti].lb=labels[p.li]}
+
+    // ----- cells: a code item, then every other text item that sits in its column -----
     const cells=[];
-    for(const l of lines){
-      let cur=null;
-      for(const it of l.items){
-        const m=it.s.match(CODE);
-        if(m){cur={code:m[1],title:(m[2]||'').trim(),x:it.x,y:l.y,end:it.x+it.w};cells.push(cur)}
-        else if(cur&&it.x-cur.end<25){cur.title+=(cur.title?' ':'')+it.s;cur.end=it.x+it.w}
-        else cur=null;
-      }
+    for(const it of its){
+      const m=it.s.match(CODE);
+      if(m)cells.push({code:m[1],own:(m[2]||'').trim(),x:it.x,y:it.y,parts:[]});
     }
+    const cw=(()=>{const a=triples.map(t=>t.c[1]-t.c[0]).filter(v=>v>0).sort((p,q)=>p-q);return a.length?a[a.length>>1]:200})();
+    const other=its.filter(i=>!CODE.test(i.s)&&!DATE.test(i.s)&&!/^[\d\s:apm,]+$/i.test(i.s)&&!/^(course code|course title|day|date)$/i.test(i.s));
+    for(const it of other){
+      let best=null,bd=1e9;
+      for(const c of cells){
+        const dy=c.y-it.y;
+        if(dy<-8||dy>34)continue;
+        if(it.x<c.x-6||it.x>=c.x+cw*0.95)continue;
+        if(cells.some(c2=>c2!==c&&Math.abs(c2.y-c.y)<=8&&c2.x>c.x+20&&c2.x<=it.x+6))continue;
+        const d=Math.abs(dy);
+        if(d<bd){bd=d;best=c}
+      }
+      if(best)best.parts.push(it);
+    }
+    for(const c of cells){
+      c.parts.sort((a,b)=>(Math.abs(a.y-b.y)>3?b.y-a.y:a.x-b.x));
+      c.title=[c.own,...c.parts.map(p=>p.s)].filter(Boolean).join(' ').replace(/\s+/g,' ').trim();
+    }
+
     const byT=new Map();
     for(const c of cells){
       let best=null,bd=1e9;
@@ -163,6 +191,11 @@ async function parsePdf(buf,onPage){
       }
     }
   }
+  // fill any still-empty title from another entry of the same course
+  const tt={};
+  for(const r of recs)if(r.title&&!tt[r.base]&&!r.noun)tt[r.base]=r.title;
+  for(const r of recs)if(r.title&&!tt[r.base])tt[r.base]=r.title;
+  for(const r of recs)if(!r.title&&tt[r.base])r.title=tt[r.base];
   return {recs,days,orphan};
 }
 
@@ -202,72 +235,70 @@ function wrap(c,t,maxW,maxL){
   return ls;
 }
 const FF='system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif';
-const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MS=['NOV','DEC','JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT'];
+const MA=['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
 function draw(hit,missing,nClash){
-  const CH=150,GAP=14,HB=60;
-  const groups=[];
-  for(const h of hit){const g=groups[groups.length-1];if(g&&g.iso===h.iso)g.items.push(h);else groups.push({iso:h.iso,dt:h.dt,wd:h.wd,items:[h]})}
+  const CH=160,GAP=16;
   const t=document.createElement('canvas').getContext('2d');
   t.font='24px '+FF;
   const mtxt=missing.length?wrap(t,'Not found in the timetable: '+missing.join(', '),W-2*P-40,6):[];
   const head=200,foot=130+(mtxt.length?mtxt.length*34+50:0);
-  const body=groups.reduce((s,g)=>s+HB+12+g.items.length*(CH+GAP)+20,0)||(CH+GAP);
+  const body=(hit.length||1)*(CH+GAP);
   const H=head+body+foot;
   const cv=document.createElement('canvas');cv.width=W;cv.height=H;
   const c=cv.getContext('2d');
   c.fillStyle='#f4f6f8';c.fillRect(0,0,W,H);
   c.fillStyle='#0b6b3a';c.fillRect(0,0,W,150);
-  c.fillStyle='#fff';c.textBaseline='alphabetic';
+  c.fillStyle='#fff';c.textBaseline='alphabetic';c.textAlign='left';
   c.font='bold 54px '+FF;c.fillText('My Exam Timetable',P,72);
   c.font='26px '+FF;c.fillText('NOUN · 2026_2 E-Exam',P,118);
   c.fillStyle='#14181f';c.font='24px '+FF;
   c.fillText(hit.length+' paper'+(hit.length===1?'':'s')+(nClash?' · '+nClash+' clash'+(nClash===1?'':'es'):''),P,188);
   let y=head;
   if(!hit.length){c.fillStyle='#5b6573';c.fillText('No matching papers found.',P,y+60);y+=CH+GAP}
-  for(const g of groups){
-    const gc=g.items.some(i=>i.clash);
-    const wd=g.wd.charAt(0).toUpperCase()+g.wd.slice(1).toLowerCase();
-    c.fillStyle=gc?'#fdeaea':'#e1f0e7';rr(c,P,y,W-2*P,HB,14);c.fill();
-    c.fillStyle=gc?'#d32f2f':'#0b6b3a';c.font='bold 34px '+FF;c.textAlign='left';
-    c.fillText(wd+', '+MN[g.dt.getUTCMonth()]+' '+g.dt.getUTCDate(),P+22,y+42);
-    c.font='24px '+FF;c.textAlign='right';
-    c.fillText(g.items.length+(g.items.length===1?' paper':' papers')+(gc?' · CLASH':''),W-P-22,y+40);
+  for(const h of hit){
+    const wd=h.wd.charAt(0).toUpperCase()+h.wd.slice(1).toLowerCase();
+    const col=h.clash?'#d32f2f':'#0b6b3a';
+    c.fillStyle=h.clash?'#fff1f1':'#fff';rr(c,P,y,W-2*P,CH,20);c.fill();
+    c.lineWidth=h.clash?6:2;c.strokeStyle=h.clash?'#d32f2f':'#d5dae1';rr(c,P,y,W-2*P,CH,20);c.stroke();
+    // date tile
+    c.fillStyle=col;rr(c,P+20,y+20,130,CH-40,16);c.fill();
+    c.fillStyle='#fff';c.textAlign='center';
+    c.font='bold 26px '+FF;c.fillText(MA[h.dt.getUTCMonth()],P+85,y+60);
+    c.font='bold 60px '+FF;c.fillText(String(h.dt.getUTCDate()),P+85,y+120);
+    // code + batch
     c.textAlign='left';
-    y+=HB+12;
-    for(const h of g.items){
-      c.fillStyle=h.clash?'#fff4f4':'#fff';rr(c,P,y,W-2*P,CH,18);c.fill();
-      c.lineWidth=h.clash?6:2;c.strokeStyle=h.clash?'#d32f2f':'#d5dae1';rr(c,P,y,W-2*P,CH,18);c.stroke();
-      c.fillStyle=h.clash?'#d32f2f':'#0b6b3a';rr(c,P+18,y+18,170,CH-36,14);c.fill();
-      c.fillStyle='#fff';c.textAlign='center';c.font='bold 36px '+FF;
-      c.fillText(h.time,P+103,y+CH/2+13);
-      c.textAlign='left';
-      const tx=P+216;
-      c.fillStyle='#14181f';c.font='bold 40px '+FF;c.fillText(h.code,tx,y+56);
-      const cw=c.measureText(h.code).width;
-      if(h.batch){
-        c.font='bold 20px '+FF;const bt='Batch '+h.batch,bw=c.measureText(bt).width+22;
-        c.fillStyle='#e3ebf5';rr(c,tx+cw+14,y+28,bw,32,16);c.fill();
-        c.fillStyle='#2a3b52';c.fillText(bt,tx+cw+25,y+51);
-      }
-      c.fillStyle='#14181f';c.font='28px '+FF;
-      wrap(c,h.title||'(title not read)',W-P-24-tx,2).forEach((l,i)=>c.fillText(l,tx,y+94+i*34));
-      if(h.clash){
-        c.font='bold 20px '+FF;const w2=c.measureText('CLASH').width+26;
-        c.fillStyle='#d32f2f';rr(c,W-P-20-w2,y+22,w2,30,15);c.fill();
-        c.fillStyle='#fff';c.fillText('CLASH',W-P-7-w2,y+44);
-      }
-      y+=CH+GAP;
+    const tx=P+182;
+    c.fillStyle='#14181f';c.font='bold 40px '+FF;c.fillText(h.code,tx,y+62);
+    const cw=c.measureText(h.code).width;
+    if(h.batch){
+      c.font='bold 20px '+FF;const bt='Batch '+h.batch,bw=c.measureText(bt).width+22;
+      c.fillStyle='#e3ebf5';rr(c,tx+cw+14,y+34,bw,32,16);c.fill();
+      c.fillStyle='#2a3b52';c.fillText(bt,tx+cw+25,y+57);
     }
-    y+=20;
+    // title (never blank)
+    c.fillStyle='#5b6573';c.font='26px '+FF;
+    wrap(c,h.title||'Course title not listed',W-P-24-tx-200,3).forEach((l,i)=>c.fillText(l,tx,y+100+i*32));
+    // time column
+    c.textAlign='right';
+    c.fillStyle='#14181f';c.font='bold 38px '+FF;c.fillText(h.time,W-P-26,y+100);
+    c.fillStyle='#5b6573';c.font='26px '+FF;c.fillText(wd,W-P-26,y+136);
+    if(h.clash){
+      c.font='bold 20px '+FF;const w2=c.measureText('CLASH').width+26;
+      c.fillStyle='#d32f2f';rr(c,W-P-26-w2,y+20,w2,30,15);c.fill();
+      c.fillStyle='#fff';c.textAlign='center';c.fillText('CLASH',W-P-26-w2/2,y+42);
+    }
+    c.textAlign='left';
+    y+=CH+GAP;
   }
   if(mtxt.length){
     const bh=mtxt.length*34+30;
     c.fillStyle='#fff4e5';rr(c,P,y,W-2*P,bh,14);c.fill();
-    c.fillStyle='#8a4b00';c.font='24px '+FF;
+    c.fillStyle='#8a4b00';c.font='24px '+FF;c.textAlign='left';
     mtxt.forEach((l,i)=>c.fillText(l,P+20,y+40+i*34));
     y+=bh+GAP;
   }
-  c.fillStyle='#5b6573';c.font='22px '+FF;
+  c.fillStyle='#5b6573';c.font='22px '+FF;c.textAlign='left';
   c.fillText('Please confirm all dates and times against the official NOUN timetable.',P,y+40);
   c.fillText('Clashing papers are listed as they appear; nothing has been moved.',P,y+74);
   return new Promise(res=>cv.toBlob(b=>res(b),'image/jpeg',0.92));
@@ -275,6 +306,7 @@ function draw(hit,missing,nClash){
 
 // ---------- UI ----------
 const st=(t,e)=>{const x=$('st');x.textContent=t;x.className='st'+(e?' err':'')};
+function chip(t,cls){const c=$('chip');c.textContent=t;c.className='chip '+(cls||'')}
 const FIX_L={'0':'O','1':'I','5':'S','8':'B','2':'Z'},FIX_D={O:'0',I:'1',L:'1',S:'5',B:'8',Z:'2',G:'6'};
 function codesFromText(txt){
   const out=[];
@@ -312,36 +344,12 @@ async function readSlip(file){
   const w=await Tesseract.createWorker('eng',1,opts);
   try{const {data}=await w.recognize(cv);return codesFromText(data.text)}finally{await w.terminate()}
 }
-$('slp').addEventListener('change',async e=>{
-  const f=e.target.files[0];if(!f)return;
-  $('l2').textContent=f.name;$('l2').classList.remove('ok');
-  try{
-    st('Reading slip…');
-    const c=await readSlip(f);
-    if(!c.length){st('No course codes found. Type them in.',1);return}
-    const all=parseCodes($('codes').value);c.forEach(x=>{if(!all.includes(x))all.push(x)});
-    $('codes').value=all.join(', ');$('l2').classList.add('ok');
-    st('Found '+c.length+' code'+(c.length===1?'':'s')+'. Check them below.');
-  }catch(err){console.error(err);st("Couldn't read the slip here. Type the codes instead.",1)}
-  e.target.value='';
-});
-$('pdf').addEventListener('change',async e=>{
-  const f=e.target.files[0];if(!f)return;
-  papers=null;$('go').disabled=true;$('l1').textContent=f.name;$('l1').classList.remove('ok');
-  try{
-    st('Loading PDF reader…');
-    try{await ensurePdf()}catch(x){st('PDF reader failed to load. Check your connection and reload.',1);return}
-    st('Reading PDF…');
-    const r=await parsePdf(await f.arrayBuffer(),(n,t)=>st('Reading page '+n+' of '+t+'…'));
-    if(!r.recs.length)throw new Error('No exam entries found. Is this the exam timetable PDF?');
-    papers=r.recs;$('go').disabled=false;$('l1').classList.add('ok');
-    st(r.recs.length+' papers, '+r.days+' days read'+(r.orphan?' ('+r.orphan+' unplaced)':'')+'.');
-  }catch(err){console.error(err);st('Could not read this PDF: '+(err.message||err),1)}
-  e.target.value='';
-});
-$('go').addEventListener('click',async()=>{
+
+async function generate(){
   const codes=parseCodes($('codes').value);
   if(!codes.length){st('Enter at least one course code.',1);return}
+  if(!papers){pending=true;st('Timetable is still loading…');return}
+  pending=false;
   try{
     const {hit,missing}=build(papers,codes);
     const nClash=new Set(hit.filter(h=>h.clash).map(h=>h.iso+h.time)).size;
@@ -351,7 +359,44 @@ $('go').addEventListener('click',async()=>{
     $('note').textContent=hit.length+' papers'+(nClash?' · '+nClash+' clash'+(nClash===1?'':'es'):'')+(missing.length?' · not found: '+missing.join(', '):'')+'. Press and hold the image if Save fails.';
     $('in').style.display='none';$('out').style.display='flex';$('wrap').scrollTop=0;
   }catch(err){console.error(err);st('Something went wrong: '+(err.message||err),1)}
+}
+
+$('slp').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  const lab=$('l2').querySelector('span');lab.textContent=f.name;$('l2').classList.remove('ok');
+  try{
+    st('Reading slip…');
+    const c=await readSlip(f);
+    if(!c.length){st('No course codes found. Type them in.',1);return}
+    const all=parseCodes($('codes').value);c.forEach(x=>{if(!all.includes(x))all.push(x)});
+    $('codes').value=all.join(', ');$('l2').classList.add('ok');
+    st('Found '+c.length+' code'+(c.length===1?'':'s')+'.');
+    if(papers)generate();else{pending=true;st('Found '+c.length+' code'+(c.length===1?'':'s')+'. Waiting for the timetable…')}
+  }catch(err){console.error(err);st("Couldn't read the slip here. Type the codes instead.",1)}
+  e.target.value='';
 });
+
+function timetableReady(r,label){
+  papers=r.recs;$('go').disabled=false;
+  chip(label||'Timetable ready','ok');
+  const l1=$('l1');l1.style.display='';l1.className='file mini';l1.innerHTML='Use a different timetable PDF';
+  st('');
+  if(pending)generate();
+}
+async function loadTimetable(buf,label){
+  await ensurePdf();
+  const r=await parsePdf(buf,(n,t)=>chip('Reading '+n+'/'+t+'…'));
+  if(!r.recs.length)throw new Error('No exam entries found. Is this the exam timetable PDF?');
+  timetableReady(r,label);
+}
+$('pdf').addEventListener('change',async e=>{
+  const f=e.target.files[0];if(!f)return;
+  papers=null;$('go').disabled=true;chip('Reading timetable…');
+  try{await loadTimetable(await f.arrayBuffer(),'Custom timetable')}
+  catch(err){console.error(err);chip('Timetable error','err');st('Could not read this PDF: '+(err.message||err),1);$('l1').style.display='';$('l1').className='file'}
+  e.target.value='';
+});
+$('go').addEventListener('click',generate);
 $('back').addEventListener('click',()=>{$('out').style.display='none';$('in').style.display='flex'});
 $('save').addEventListener('click',async()=>{
   if(!blob)return;const name='My-Exam-Timetable.jpg';
@@ -362,6 +407,20 @@ $('save').addEventListener('click',async()=>{
   catch(e){if(e&&e.name==='AbortError')return}
   const a=document.createElement('a');a.href=imgUrl;a.download=name;document.body.appendChild(a);a.click();a.remove();
 });
+
+// ---------- preload the general timetable ----------
+(async()=>{
+  try{
+    const res=await fetch(TIMETABLE_URL);
+    if(!res.ok)throw new Error('missing');
+    await loadTimetable(await res.arrayBuffer());
+  }catch(err){
+    console.warn('Preload failed',err);
+    chip('Timetable not loaded','err');
+    st('Choose the general timetable PDF below.');
+    $('l1').style.display='';$('l1').className='file';
+  }
+})();
 </script>
 </body>
 </html>
